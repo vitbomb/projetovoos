@@ -1,0 +1,43 @@
+# .github/workflows/update-flights.yml
+name: Atualizar voos
+
+on:
+  schedule:
+    # Todos os dias às 09:00 UTC, equivalente a 06:00 em Brasília
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fetch-and-insert
+  cancel-in-progress: true
+
+jobs:
+  fetch-and-insert:
+    name: Buscar e inserir voos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      AIRPORTS: ${{ vars.AIRPORTS || 'SBCA' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Buscar voos e enviar ao Supabase
+        run: python scripts/fetch_flights.py
